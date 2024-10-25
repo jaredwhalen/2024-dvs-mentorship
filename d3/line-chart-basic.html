@@ -51,62 +51,62 @@
         );
 
 
-      // Demo: Outer and inner 
-      svg
-        .append("rect")
-        .attr("width", dimensions.width)
-        .attr("height", dimensions.height)
-        .attr("fill", "transparent")
-        .attr("stroke-width", "4px")
-        .attr("stroke", "red");
+      // // Demo: Outer and inner 
+      // svg
+      //   .append("rect")
+      //   .attr("width", dimensions.width)
+      //   .attr("height", dimensions.height)
+      //   .attr("fill", "transparent")
+      //   .attr("stroke-width", "4px")
+      //   .attr("stroke", "red");
 
-      g.append("rect")
-        .attr("width", dimensions.innerWidth)
-        .attr("height", dimensions.innerHeight)
-        .attr("fill", "transparent")
-        .attr("stroke-width", "2px")
-        .attr("stroke", "blue");
+      // g.append("rect")
+      //   .attr("width", dimensions.innerWidth)
+      //   .attr("height", dimensions.innerHeight)
+      //   .attr("fill", "transparent")
+      //   .attr("stroke-width", "2px")
+      //   .attr("stroke", "blue");
 
-      // Step 4: Define a sample dataset for the line chart
-      const data = [
-          { date: new Date(2024, 0, 1), value: 30 },
-          { date: new Date(2024, 1, 1), value: 80 },
-          { date: new Date(2024, 2, 1), value: 45 },
-          { date: new Date(2024, 3, 1), value: 60 },
-          { date: new Date(2024, 4, 1), value: 100 },
-          { date: new Date(2024, 5, 1), value: 75 }
-      ];
+      // // Step 4: Define a sample dataset for the line chart
+      // const data = [
+      //     { date: new Date(2024, 0, 1), value: 30 },
+      //     { date: new Date(2024, 1, 1), value: 80 },
+      //     { date: new Date(2024, 2, 1), value: 45 },
+      //     { date: new Date(2024, 3, 1), value: 60 },
+      //     { date: new Date(2024, 4, 1), value: 100 },
+      //     { date: new Date(2024, 5, 1), value: 75 }
+      // ];
 
-      // Step 5: Create scales for the x and y axes
-      const xScale = d3.scaleTime()
-          .domain(d3.extent(data, d => d.date))
-          .range([0, dimensions.innerWidth]);
+      // // Step 5: Create scales for the x and y axes
+      // const xScale = d3.scaleTime()
+      //     .domain(d3.extent(data, d => d.date))
+      //     .range([0, dimensions.innerWidth]);
 
-      const yScale = d3.scaleLinear()
-          .domain([0, d3.max(data, d => d.value)])
-          .range([dimensions.innerHeight, 0]);
+      // const yScale = d3.scaleLinear()
+      //     .domain([0, d3.max(data, d => d.value)])
+      //     .range([dimensions.innerHeight, 0]);
 
-      // Step 6: Create the line generator function
-      const line = d3.line()
-          .x(d => xScale(d.date))
-          .y(d => yScale(d.value));
+      // // Step 6: Create the line generator function
+      // const line = d3.line()
+      //     .x(d => xScale(d.date))
+      //     .y(d => yScale(d.value));
 
-      // Step 7: Append the path element for the line to the group element
-      g.append("path")
-          .datum(data)
-          .attr("fill", "none")
-          .attr("stroke", "steelblue")
-          .attr("stroke-width", 2)
-          .attr("d", line);
+      // // Step 7: Append the path element for the line to the group element
+      // g.append("path")
+      //     .datum(data)
+      //     .attr("fill", "none")
+      //     .attr("stroke", "steelblue")
+      //     .attr("stroke-width", 2)
+      //     .attr("d", line);
 
-      // Step 8: Create and append x-axis to the chart
-      g.append("g")
-          .attr("transform", `translate(0, ${dimensions.innerHeight})`)
-          .call(d3.axisBottom(xScale).ticks(6));
+      // // Step 8: Create and append x-axis to the chart
+      // g.append("g")
+      //     .attr("transform", `translate(0, ${dimensions.innerHeight})`)
+      //     .call(d3.axisBottom(xScale).ticks(6));
 
-      // Step 9: Create and append y-axis to the chart
-      g.append("g")
-          .call(d3.axisLeft(yScale));
+      // // Step 9: Create and append y-axis to the chart
+      // g.append("g")
+      //     .call(d3.axisLeft(yScale));
     </script>
   </body>
 </html>
