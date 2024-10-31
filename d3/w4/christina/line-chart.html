@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <title>D3 Line Chart</title>
+
+    <style>
+      body {
+        background-color: #e6e7e9;
+      }
+
+      rect {
+        pointer-events: all;
+        fill-opacity: 0;
+        stroke-opacity: 0;
+        z-index: 1;
+      }
+
+      .tooltip {
+        position: absolute;
+        background-color: rgba(0, 0, 0, 0.8);
+        padding: 12px;
+        color: white;
+        border: 1px solid white;
+        border-radius: 4px;
+        pointer-events: none;
+        opacity: 0;
+        font-family: sans-serif;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="chart-container"></div>
+    <div id="tooltip"></div>
+
+    <script>
+      // Set dimensions and margins for the chart
+      const margin = { top: 70, right: 30, bottom: 40, left: 80 };
+      const width = 1500 - margin.left - margin.right;
+      const height = 500 - margin.top - margin.bottom;
+
+      // Set up x & y scales
+      const x = d3.scaleTime().range([0, width]);
+
+      const y = d3.scaleLinear().range([height, 0]);
+
+      // Create SVG element and append it to the chart container
+      const svg = d3
+        .select("#chart-container")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      // Define the categories
+      const categories = [
+        { name: "Men", color: "#EF6826" },
+        { name: "Women", color: "#B36DF2" },
+      ];
+
+      // Create tooltip div
+      const tooltip = d3.select("body").append("div").attr("class", "tooltip");
+
+      // Load dataset & customize data - including axes, line, legend, tooltip
+      d3.json("data.json").then((data) => {
+        // Define domains after data is loaded
+        x.domain(d3.extent(data, (d) => new Date(d.Date)));
+        y.domain([94, d3.max(data, (d) => Math.max(d.Men, d.Women))]);
+        // y.domain([94,d3.max(data, d => Math.max(...categories.map(c => d[c.name])))
+        // ]);
+
+        // Add the x-axis
+        svg
+          .append("g")
+          .attr("transform", `translate(0,${height})`)
+          .style("font-size", "10px")
+          .call(
+            d3
+              .axisBottom(x)
+              .ticks(d3.timeMonth.every(3))
+              .tickFormat(d3.timeFormat("%B %Y"))
+          )
+          .call((g) => g.select(".domain").remove()) // Removes axis lines
+          .selectAll(".tick line")
+          .style("stroke-opacity", 0); // Removes tick lines
+        svg.selectAll(".tick text");
+        // .attr("fill", "#777");
+
+        // Add the y-axis
+        svg
+          .append("g")
+          .style("font-size", "10px")
+          .call(
+            d3
+              .axisLeft(y)
+              .ticks(d3.max(data, (d) => Math.max(d.Men, d.Women) - 94))
+              .tickSize(0)
+              .tickPadding(10)
+          )
+          .call((g) => g.select(".domain").remove()); // Removes axis lines
+        svg.selectAll(".tick text");
+        // .attr("fill", "#777");
+
+        // Create the line generator
+        const line = d3.line().x((d) => x(new Date(d.Date)));
+        // .y((d) => y(d.value));
+
+        // Add lines for each category
+        categories.forEach((category) => {
+          svg
+            .append("path")
+            .datum(data)
+            .attr("fill", "none")
+            .attr("stroke", category.color)
+            .attr("stroke-width", 2.5)
+            .attr(
+              "d",
+              line.y((d) => y(d[category.name]))
+            );
+        });
+
+        // Add vertical gridlines
+        svg
+          .selectAll("xGrid")
+          .data(x.ticks().slice(1))
+          .join("line")
+          .attr("x1", (d) => x(d))
+          .attr("x2", (d) => x(d))
+          .attr("y1", 0)
+          .attr("y2", height)
+          .attr("stroke", "#74858F")
+          .attr("stroke-width", 0.1);
+
+        // Add horizontal gridlines
+        svg
+          .selectAll("yGrid")
+          .data(
+            y.ticks(d3.max(data, (d) => Math.max(d.Men, d.Women) - 94)).slice(1)
+          )
+          .join("line")
+          .attr("x1", 0)
+          .attr("x2", width)
+          .attr("y1", (d) => y(d))
+          .attr("y2", (d) => y(d))
+          .attr("stroke", "#74858F")
+          .attr("stroke-width", 0.1);
+
+        // Add the chart title
+        svg
+          .append("text")
+          .attr("class", "chart-title")
+          .attr("x", margin.left - 110)
+          .attr("y", margin.top - 100)
+          .style("font-size", "24px")
+          .style("font-weight", "bold")
+          .style("font-family", "sans-serif")
+          .text(
+            "Labor force participation for women is recovering more quickly than it is for men"
+          );
+
+        // Add source credit
+        svg
+          .append("text")
+          .attr("class", "source-credit")
+          .attr("x", width - 1410)
+          .attr("y", height + margin.bottom - 3)
+          .attr("fill", "#777")
+          .style("font-size", "8px")
+          .style("font-family", "sans-serif")
+          .text("Source: U.S. Bureau of Labor Statistics");
+
+        // Create circles for all categories
+        const circles = categories.map((category) =>
+          svg.append("circle").attr("r", 0).attr("fill", category.color)
+        );
+
+        // Create listening rectangle
+        const listeningRect = svg
+          .append("rect")
+          .attr("width", width)
+          .attr("height", height);
+
+        // Mouse move function
+        listeningRect.on("mousemove", function (event) {
+          const [xCoord] = d3.pointer(event, this);
+          const bisectDate = d3.bisector((d) => new Date(d.Date)).left;
+          const x0 = x.invert(xCoord);
+          const i = bisectDate(data, x0, 1);
+          const d0 = data[i - 1];
+          const d1 = data[i];
+          const d = x0 - new Date(d0.Date) > new Date(d1.Date) - x0 ? d1 : d0;
+          const xPos = x(new Date(d.Date));
+
+          // Update all circles with position and transition
+          circles.forEach((circle, i) => {
+            const category = categories[i];
+            circle
+              .attr("cx", xPos)
+              .attr("cy", y(d[category.name]))
+              .transition()
+              .duration(50)
+              .style("opacity", 1)
+              .attr("r", 5);
+          });
+
+          // Create tooltip content
+          const tooltipContent = `
+                <div style="margin-bottom: 5px"><strong>Date:</strong> ${d3.timeFormat(
+                  "%B %Y"
+                )(new Date(d.Date))}</div>
+                <div style="margin-bottom: 3px"><span style="color: ${
+                  categories[1].color
+                }">●</span> <strong>Women:</strong> ${d.Women.toFixed(1)}%</div>
+                <div><span style="color: ${
+                  categories[0].color
+                }">●</span> <strong>Men:</strong> ${d.Men.toFixed(1)}%</div>
+            `;
+
+          // Update tooltip
+          tooltip
+            .style("display", "block")
+            .style("opacity", 1)
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY - 30}px`)
+            .html(tooltipContent);
+        });
+
+        // Mouse leave function
+        listeningRect.on("mouseleave", function () {
+          // Hide circles
+          circles.forEach((circle) => {
+            circle.transition().duration(50).style("opacity", 0).attr("r", 0);
+          });
+
+          // Hide tooltip
+          tooltip.style("display", "none");
+        });
+
+        // Add a legend for the lines
+        const legend = svg
+          .append("g")
+          .attr("transform", `translate(${width - 60},${height - 425})`);
+
+        // Assign colors to categories
+        const legendCategories = [
+          { name: "Women", color: "#B36DF2" },
+          { name: "Men", color: "#EF6826" },
+        ];
+
+        legendCategories.forEach((d, index) => {
+          const legendRow = legend
+            .append("g")
+            .attr("transform", `translate(0, ${index * 20})`);
+
+          legendRow
+            .append("circle")
+            .attr("r", 3)
+            .attr("cx", 5)
+            .attr("cy", 3)
+            .attr("fill", d.color);
+
+          legendRow
+            .append("text")
+            .attr("x", 15)
+            .attr("y", 0)
+            .attr("dy", "0.35em")
+            .text(d.name)
+            .style("font-size", "12px")
+            .style("font-family", "sans-serif")
+            .attr("alignment-baseline", "middle");
+        });
+      });
+    </script>
+  </body>
+</html>

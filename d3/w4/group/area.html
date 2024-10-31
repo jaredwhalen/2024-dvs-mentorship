@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <title>D3 Area Chart</title>
+    <style>
+      body {
+        background-color: #e6e7e9;
+      }
+      #chart-container {
+        max-width: 100%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="chart-container"></div>
+
+    <script>
+      // Load the data from aapl.json
+      d3.json("aapl.json").then((data) => {
+        // Parse the date and close values
+        const aapl = data.map(d => ({
+          date: new Date(d.date),
+          close: +d.close
+        }));
+
+        // Get container width for responsive scaling
+        const containerWidth = document.getElementById("chart-container").clientWidth;
+
+        // Define dimensions with dynamic width
+        const dimensions = {
+          width: containerWidth,
+          height: 400,
+          margins: {
+            top: 20,
+            right: 40,
+            bottom: 30,
+            left: 30
+          },
+          get innerWidth() {
+            return this.width - this.margins.left - this.margins.right;
+          },
+          get innerHeight() {
+            return this.height - this.margins.top - this.margins.bottom;
+          }
+        };
+
+        // Define scales using dynamic dimensions
+        const x = d3.scaleUtc()
+          .domain(d3.extent(aapl, d => d.date))
+          .range([dimensions.margins.left, dimensions.innerWidth + dimensions.margins.left]);
+
+        const y = d3.scaleLinear()
+          .domain([0, d3.max(aapl, d => d.close)]).nice()
+          .range([dimensions.innerHeight + dimensions.margins.top, dimensions.margins.top]);
+
+        // Define the area generator
+        const area = d3.area()
+          .x(d => x(d.date))
+          .y0(y(0))
+          .y1(d => y(d.close));
+
+        // Create the SVG container
+        const svg = d3.select("#chart-container")
+          .append("svg")
+          .attr("width", dimensions.width)
+          .attr("height", dimensions.height)
+          .attr("viewBox", `0 0 ${dimensions.width} ${dimensions.height}`)
+          .attr("style", "max-width: 100%; height: auto;");
+
+        // Append the area path
+        svg.append("path")
+          .datum(aapl)
+          .attr("fill", "steelblue")
+          .attr("d", area);
+
+        // Add x-axis
+        svg.append("g")
+          .attr("transform", `translate(0,${dimensions.innerHeight + dimensions.margins.top})`)
+          .call(d3.axisBottom(x).ticks(dimensions.innerWidth / 80).tickSizeOuter(0));
+
+        // Add y-axis with grid lines
+        svg.append("g")
+          .attr("transform", `translate(${dimensions.margins.left},0)`)
+          .call(d3.axisLeft(y).ticks(dimensions.innerHeight / 40))
+          .call(g => g.select(".domain").remove())
+          .call(g => g.selectAll(".tick line").clone()
+            .attr("x2", dimensions.innerWidth)
+            .attr("stroke-opacity", 0.1))
+          .call(g => g.append("text")
+            .attr("x", -dimensions.margins.left)
+            .attr("y", 10)
+            .attr("fill", "currentColor")
+            .attr("text-anchor", "start")
+            .text("↑ Daily close ($)"));
+      });
+    </script>
+  </body>
+</html>

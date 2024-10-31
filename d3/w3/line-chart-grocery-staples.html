@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grocery Staple Prices Chart with Tooltips and Gridlines</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+      body {
+        font-family: sans-serif;
+      }
+      .line-chart {
+        background: #f9f9f9;
+        padding: 20px;
+      }
+      .line {
+        fill: none;
+        stroke-width: 2;
+      }
+      .axis-label {
+        font-size: 12px;
+      }
+      .gridline line {
+        stroke: rgb(204, 204, 204);
+        stroke-width: 1;
+        stroke-dasharray: 4, 4;
+        shape-rendering: crispedges;
+      }
+
+      .tick text {
+        font-family: monospace;
+      }
+
+      #tooltip {
+        position: absolute;
+        opacity: 0;
+        padding: 5px;
+        pointer-events: none;
+        font-size: 12px;
+        background: white;
+      }
+
+      .domain {
+        display: none;
+      }
+
+      .axis-label text {
+        fill: rgb(123, 123, 123);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="line-chart" id="chart"></div>
+    <div id="tooltip"></div>
+    <script>
+      // Step 1: Define dimensions object with innerWidth and innerHeight as properties
+      const dimensions = {
+        width: 1000,
+        height: 400,
+        margins: {
+          top: 20,
+          right: 100,
+          bottom: 50,
+          left: 40,
+        },
+        get innerWidth() {
+          return this.width - this.margins.left - this.margins.right;
+        },
+        get innerHeight() {
+          return this.height - this.margins.top - this.margins.bottom;
+        },
+      };
+
+      // Step 2: Define an array of series names
+      const seriesNames = [
+        "Chicken",
+        "Eggs",
+        "Ground beef",
+        "Bread",
+        "Bananas",
+        "Milk",
+        "Potatoes",
+        "Coffee",
+      ];
+
+      // Step 3: Create the SVG element
+      const svg = d3
+        .select("#chart")
+        .append("svg")
+        .attr("width", dimensions.width)
+        .attr("height", dimensions.height);
+
+      // Step 4: Create a group element (g) for the chart and position it with margins
+      const g = svg
+        .append("g")
+        .attr(
+          "transform",
+          `translate(${dimensions.margins.left},${dimensions.margins.top})`
+        );
+
+      // Step 5: Load data from the CSV file
+      d3.csv("data/grocery-staples.csv")
+        .then((data) => {
+          // Step 6: Parse date and convert values to numbers
+          const parseDate = d3.timeParse("%Y-%m-%d");
+          data.forEach((d) => {
+            d.date = parseDate(d.date);
+            seriesNames.forEach((name) => {
+              d[name] = +d[name] * 100;
+            });
+          });
+
+          // Step 7: Create scales for the x and y axes
+          const xScale = d3
+            .scaleTime()
+            .domain(d3.extent(data, (d) => d.date))
+            .range([0, dimensions.innerWidth]);
+
+          const yScale = d3
+            .scaleLinear()
+            .domain([
+              0,
+              d3.max(data, (d) => d3.max(seriesNames, (name) => d[name])),
+            ])
+            .range([dimensions.innerHeight, 0]);
+
+          // Step 8: Define a color scale for different lines
+          const colorScale = d3
+            .scaleOrdinal()
+            .domain(seriesNames)
+            .range(d3.schemeTableau10);
+
+          // Step 9: Create a line generator function
+          const line = d3
+            .line()
+            .x((d) => xScale(d.date))
+            .y((d) => yScale(d.value));
+
+          // Step 10: Prepare the data for each line
+          const lines = seriesNames.map((name) => {
+            return {
+              name: name,
+              values: data.map((d) => ({ date: d.date, value: d[name] })),
+            };
+          });
+
+          // Step 11: Draw each line on the chart
+          g.selectAll(".line")
+            .data(lines)
+            .enter()
+            .append("path")
+            .attr("class", "line")
+            .attr("d", (d) => line(d.values))
+            .attr("stroke", (d) => colorScale(d.name));
+
+          // Step 12: Create a gridline generator for the y-axis with dashed lines
+          const yAxisGrid = d3
+            .axisLeft(yScale)
+            .tickSize(-dimensions.innerWidth)
+            .tickFormat("")
+            .ticks(6);
+
+          // Step 13: Draw the y-axis gridlines with dashed style
+          g.append("g").attr("class", "gridline y").call(yAxisGrid);
+
+          // Step 14: Create and append x-axis to the chart
+          g.append("g")
+            .attr(
+              "transform",
+              `translate(0, ${
+                dimensions.innerHeight + dimensions.margins.bottom / 2
+              })`
+            )
+            .call(d3.axisBottom(xScale).ticks(7).tickSize(0))
+            .attr("class", "axis-label x");
+
+          // Step 15: Create and append y-axis with labels only (no ticks)
+          g.append("g")
+            .call(d3.axisLeft(yScale).tickSize(0).ticks(6))
+            .attr("class", "axis-label y");
+
+          // Step 16: Add a legend for the lines
+          const legend = g
+            .append("g")
+            .attr("transform", `translate(${dimensions.innerWidth + 10}, 0)`);
+
+          seriesNames.forEach((name, index) => {
+            const legendRow = legend
+              .append("g")
+              .attr("transform", `translate(0, ${index * 20})`);
+
+            legendRow
+              .append("rect")
+              .attr("width", 10)
+              .attr("height", 10)
+              .attr("fill", colorScale(name));
+
+            legendRow
+              .append("text")
+              .attr("x", 15)
+              .attr("y", 10)
+              .text(name)
+              .attr("font-size", "12px")
+              .attr("alignment-baseline", "middle");
+          });
+
+          // Step 17: Create a tooltip
+          const tooltip = d3.select("#tooltip");
+
+          // Step 18: Create circles for each point in the line to display tooltip on hover
+          g.selectAll(".tooltip-circle")
+            .data(
+              lines.flatMap((d) =>
+                d.values.map((v) => ({ name: d.name, ...v }))
+              )
+            )
+            .enter()
+            .append("circle")
+            .attr("class", "tooltip-circle")
+            .attr("cx", (d) => xScale(d.date))
+            .attr("cy", (d) => yScale(d.value))
+            .attr("r", 6)
+            .attr("fill", "transparent")
+            .attr("stroke", "grey")
+            .attr("opacity", 1)
+            .on("mouseover", (event, d) => {
+              // Show the tooltip
+              tooltip.style("opacity", 0.9);
+              tooltip
+                .html(
+                  `
+                <strong style='color: ${colorScale(d.name)}'>${
+                    d.name
+                  }</strong><br/>
+                ${d3.timeFormat("%B %Y")(d.date)}<br/>
+                ${d.value.toFixed(1)}%
+            `
+                )
+                .style("left", event.pageX + 10 + "px")
+                .style("top", event.pageY - 28 + "px");
+
+              // Change the opacity of the hovered circle to 1
+              d3.select(event.currentTarget).attr("opacity", 1);
+            })
+            .on("mouseout", (event) => {
+              // Hide the tooltip
+              tooltip.style("opacity", 0);
+
+              // Change the opacity of the hovered circle back to 0
+              d3.select(event.currentTarget).attr("opacity", 0);
+            });
+
+        })
+        .catch((error) => console.error("Error loading the data:", error));
+    </script>
+  </body>
+</html>
